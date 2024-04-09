@@ -14,6 +14,7 @@ from collections import defaultdict
 
 #https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html
 #3.6771007487841416 MB k2
+#3.0428894963115454 MB k3
 #4.1269525192910805 MB k4
 #2.6320016653917264 MB k5
 #2.5886756268446334 MB k7
@@ -83,25 +84,35 @@ def load_model():
             global global_model
             global_model = keras.models.load_model(directory_path)
         except (OSError, ValueError) as e:
-            print(f"Error loading model: {e}")
+            tk.messagebox.showerror("Error", f"Error loading model: {e}")
             return None
 
 def kth_order_entropy(text, k):
     if not validate_text(text):
         return
+    
+    if not k:
+        tk.messagebox.showinfo("Info", "No context lenght selected")
+        return
 
-    progress_bar.start()
-    kth_entropy_calculator = KthEntropyCalculator(text, k)
+    kth_entropy_var.set("Entropy: calculating...")
+    kth_entropy_calculator = KthEntropyCalculator(text, int(k))
     entropy = kth_entropy_calculator.calculate_kth_entropy()
-    progress_bar.stop()
 
     entropy_label.config(text=str(round(entropy, 3)))
 
+    kth_entropy_var.set(f"Entropy: {round(entropy, 3)} bpB")
+
 def estimated_compressed_size(text, k, model):
+    if not k:
+        tk.messagebox.showinfo("Info", "No context lenght selected")
+        return
+
     batch_size = int(batch_compress_size_var.get())
-    compessed_size_calculator = CompressedSize(model, k, batch_size, text)
+    compessed_size_calculator = CompressedSize(model, int(k), batch_size, text)
+    compressed_size_var.set("calculating...")
     compressed_size = compessed_size_calculator.compute(text)
-    compressed_size_var.set("Compressed size: calculating...")
+    
 
     if compressed_size is not None:
         compressed_size = compressed_size / (1024 * 1024 * 8)
@@ -114,15 +125,19 @@ def build_model():
     if not validate_text(text_loader.loaded_text):
         return
     
+    k = context_length_var.get()
+
+    if not k:
+        tk.messagebox.showinfo("Info", "No context lenght selected")
+        return
+    
     progress_window = tk.Toplevel(root)
     progress_window.title("Training progress")
 
     text_widget = tk.Text(progress_window)
     text_widget.pack()
-
+    k = int(k)
     mapped_chars = map_chars(text_loader.loaded_text)
-
-    k = int(context_length_var.get())
     sigma = count_unique_chars(mapped_chars)
     num_dense_layers = int(dense_layers_scale.get())
     dense_layer_sizes = [int(dense_comboboxes[i].get()) for i in range(num_dense_layers)]
@@ -158,7 +173,12 @@ def build_model():
     
 
 def update_file_path_label():
+    ta = TextAnalyzer(text_loader.loaded_text)
+    text_size_var.set(f"Text size: {text_loader.file_size}")
+    sigma_var.set(f"Alphabet size: {ta.sigma}")
     file_path_label.config(text=text_loader.file_name)
+    
+    
 
 def update_lstm_scales(value):
     for i, cb in enumerate(lstm_comboboxes):
@@ -174,7 +194,6 @@ def update_dense_scales(value):
         else:
             cb.configure(state="disabled")
         
-
 text_loader = TextLoader()
 global_model = None
 
@@ -207,7 +226,7 @@ button_style.configure("Custom2.TButton",
 context_lengths = [2, 3, 4, 5, 6, 7, 10, 15, 20]
 context_length_var = tk.StringVar()
 
-batch_sizes = [32, 64, 128, 256, 512, 1024]
+batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 batch_size_var = tk.StringVar(root)
 
 batch_compress_sizes = [32, 64, 128, 256, 512, 1024, 2048]
@@ -216,55 +235,81 @@ batch_compress_size_var = tk.StringVar(root)
 nodes_values = [32, 64, 128]
 
 compressed_size_var = tk.StringVar()
-compressed_size_var.set("Size: ")
 
-top_file_frame = tk.Frame(root)
-top_file_frame.grid(row=0, column=0, pady=10, columnspan=3)
+kth_entropy_var = tk.StringVar()
+kth_entropy_var.set("Entropy: ")
 
-left_frame = tk.Frame(root,
-                      borderwidth=1, 
-                      relief="solid",
-                      highlightbackground="#CCCCCC",
-                      highlightthickness=1, 
-                      bd=0)
-left_frame.grid(row=1, column=0, padx=10, pady=10)
+text_size_var = tk.StringVar()
+text_size_var.set("Text size: ")
 
-model_frame = tk.Frame(root, 
+sigma_var = tk.StringVar()
+sigma_var.set("Alphabet size: ")
+
+# Top file frame
+top_file_frame = tk.Frame(root,
+                          borderwidth=1, 
+                          relief="solid",
+                          highlightbackground="#CCCCCC",
+                          highlightthickness=1, 
+                          bd=0)
+top_file_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
+
+# Model frame
+model_frame = tk.Frame(root,
                        borderwidth=1, 
                        relief="solid",
                        highlightbackground="#CCCCCC",
                        highlightthickness=1, 
                        bd=0)
-                       
-model_frame.grid(row=1, column=1, padx=10, rowspan=2, pady=10)
+model_frame.grid(row=1, column=1, padx=10, pady=10, sticky="nsew", rowspan=2)
 
+# Configure the grid to expand the frames
+root.grid_rowconfigure(0, weight=1)
+root.grid_rowconfigure(2, weight=1)
+root.grid_columnconfigure(0, weight=1)
+root.grid_columnconfigure(1, weight=1)
 
 
 #-----------------top file frame-----------------
-file_label = tk.Label(top_file_frame, text="File:")
-file_label.pack(side=tk.LEFT, padx=20)
+file_label = tk.Label(top_file_frame, text="File: ")
+file_label.grid(row=0, column=0, padx=(20, 20), sticky="w", pady=4)
 
 frame = tk.Frame(top_file_frame, 
                  borderwidth=1, 
-                 relief="solid", 
-                 highlightbackground="#8C8C8C", 
+                 relief="solid",
+                 highlightbackground="#CCCCCC",
                  highlightthickness=1, 
-                 bd=0)
+                 bd=0,
+                 )
 
 file_path_label = tk.Label(frame, 
                            text=text_loader.file_name, 
-                           width=50,
-                           anchor="w")
+                           width=35,
+                           anchor="w",
+                           pady=4)
 
-frame.pack(side=tk.LEFT)
+frame.grid(row=0, column=1, padx=20, sticky="w")
 file_path_label.pack(side=tk.LEFT)
 
 load_text_button = ttk.Button(top_file_frame, 
                              style="Custom.TButton",
-                             text="...", command=lambda: 
-                            (text_loader.load_file(),
-                            update_file_path_label()))
-load_text_button.pack(side=tk.LEFT, padx=5)
+                             text="...", 
+                             command=lambda: (text_loader.load_file(), 
+                                              update_file_path_label()),
+                             width=5) 
+load_text_button.grid(row=0, column=2, padx=5, pady=4, sticky="w")
+
+
+context_length_label = tk.Label(top_file_frame, text="Context length:")
+context_length_label.grid(row=1, column=0, padx=20) 
+
+context_length_combobox = ttk.Combobox(top_file_frame, 
+                                       textvariable=context_length_var, 
+                                       values=context_lengths, 
+                                       state="readonly",
+                                       width=10)
+context_length_combobox.grid(row=1, column=1, pady=5, padx=(20, 0), sticky="w")
+
 #------------------------------------------------
 
 
@@ -385,6 +430,15 @@ save_model_button.grid(row=8, column=0, pady=5)
 #------------------------------------------------
 
 #-----------------left frame---------------------
+# Left frame
+left_frame = tk.Frame(root,
+                      borderwidth=1, 
+                      relief="solid",
+                      highlightbackground="#CCCCCC",
+                      highlightthickness=1, 
+                      bd=0)
+left_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
 compressed_size_title_label = tk.Label(left_frame, 
                        text="Compressed size",
                        font=("Arial", 12, "bold"))
@@ -414,12 +468,12 @@ compressed_size_button = ttk.Button(left_frame,
                                     command=lambda: threading.Thread
                                     (target=estimated_compressed_size,
                                      args=(text_loader.loaded_text,
-                                           int(context_length_var.get()),
+                                           context_length_var.get(),
                                            global_model)).start())
 compressed_size_button.grid(row=4, column=0, pady=(20, 10))
 
 compressed_size_label = tk.Label(left_frame, textvariable=compressed_size_var)
-compressed_size_label.grid(row=5, column=0, pady=5, padx=(0, 25))
+compressed_size_label.grid(row=5, column=0, pady=5)
 #------------------------------------------------
 
 #-----------------bottom frame---------------------
@@ -429,32 +483,35 @@ bottom_frame = tk.Frame(root,
                         highlightbackground="#CCCCCC",
                         highlightthickness=1, 
                         bd=0)
-bottom_frame.grid(row=2, column=0, pady=10)
+bottom_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-context_length_label = tk.Label(bottom_frame, text="Context length")
-context_length_label.grid(row=0, column=0, padx=5)
+bottom_frame.grid_columnconfigure(0, weight=1)
 
-context_length_combobox = ttk.Combobox(bottom_frame, 
-                                       textvariable=context_length_var, 
-                                       values=context_lengths, 
-                                       state="readonly")
-context_length_combobox.grid(row=1, column=0, padx=5)
-context_length_combobox.current(3)
+entropy_title_label = tk.Label(bottom_frame, 
+                       text="Text information",
+                       font=("Arial", 12, "bold"))
+
+entropy_title_label.grid(row=0, column=0, pady=(5,15), sticky="ew")
+
+sigma_label = tk.Label(bottom_frame, textvariable=sigma_var)
+sigma_label.grid(row=1, column=0, padx=12, pady=7, sticky="w")
+
+text_size_label = tk.Label(bottom_frame, textvariable=text_size_var)
+text_size_label.grid(row=2, column=0, padx=12, pady=7, sticky="w")
+
+entropy_label = tk.Label(bottom_frame, textvariable=kth_entropy_var)
+entropy_label.grid(row=3, column=0, padx=12, pady=7, sticky="w")
 
 entropy_button = ttk.Button(bottom_frame, 
                             style="Custom2.TButton",
-                            text="Kth order entropy", 
+                            text="Calculate Entropy", 
                             command=lambda: threading.Thread
                             (target=kth_order_entropy, 
-                            args=(text_loader.loaded_text, int(context_length_var.get()))).start())
-entropy_button.grid(row=2, column=0, padx=5)
+                            args=(text_loader.loaded_text, context_length_var.get())).start())
+entropy_button.grid(row=4, column=0, pady=(5, 15), padx=22, sticky="w")
 
-entropy_label = tk.Label(bottom_frame, text="")
-entropy_label.grid(row=3, column=0, pady=5)
 
-progress_var = tk.IntVar()
-progress_bar = ttk.Progressbar(bottom_frame, length=150, mode='indeterminate')
-progress_bar.grid(row=4, column=0, pady=5)
+
 #------------------------------------------------
 
 root.mainloop()
