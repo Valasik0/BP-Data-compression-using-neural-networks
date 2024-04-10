@@ -21,33 +21,6 @@ from collections import defaultdict
 #2.578941140702227 MB k10
 #2.6362323465000372 MB k15
 
-
-def validate_text(text):
-    if not isinstance(text, bytes):
-        messagebox.showerror("Error", "Loaded text is in incorrect format.")
-        return False
-    if len(text) == 0:
-        messagebox.showinfo("Info", "Loaded text is empty. Please load a text.")
-        return False
-    return True
-
-def map_chars(text):
-    if validate_text(text):
-        chars = sorted(list(set(text))) #chars - unikatni znaky v textu pomoci metody set
-        mapped_chars = {c:i for i, c in enumerate(chars)}
-
-        mapped_chars['<UNK>'] = len(mapped_chars)
-        return mapped_chars
-    
-    else:
-        return None
-
-def count_unique_chars(mapped_chars): 
-    if mapped_chars is None or len(mapped_chars) == 0:
-        return None
-    
-    return len(mapped_chars)
-
 def generate_sequences(text, k, mapped_chars, sigma, batch_size):
     while True:
         batch_chars = []
@@ -88,7 +61,8 @@ def load_model():
             return None
 
 def kth_order_entropy(text, k):
-    if not validate_text(text):
+    ta = TextAnalyzer(text)
+    if not ta.validate_text():
         return
     
     if not k:
@@ -107,11 +81,20 @@ def estimated_compressed_size(text, k, model):
     if not k:
         tk.messagebox.showinfo("Info", "No context lenght selected")
         return
+    
+    progress_window_compress = tk.Toplevel(root)
+    progress_window_compress.title("Computing compressed size")
+    progress_window_compress.geometry("400x200")
+
+    text_widget_compress = tk.Text(progress_window_compress)
+    text_widget_compress.pack()
+
 
     batch_size = int(batch_compress_size_var.get())
-    compessed_size_calculator = CompressedSize(model, int(k), batch_size, text)
+    compessed_size_calculator = CompressedSize(model, int(k), batch_size, text, text_widget_compress)
     compressed_size_var.set("calculating...")
     compressed_size = compessed_size_calculator.compute(text)
+    
     
 
     if compressed_size is not None:
@@ -122,7 +105,9 @@ def estimated_compressed_size(text, k, model):
         compressed_size_var.set("Size: error")
 
 def build_model():
-    if not validate_text(text_loader.loaded_text):
+    ta = TextAnalyzer(text_loader.loaded_text)
+
+    if not ta.validate_text():
         return
     
     k = context_length_var.get()
@@ -131,14 +116,17 @@ def build_model():
         tk.messagebox.showinfo("Info", "No context lenght selected")
         return
     
-    progress_window = tk.Toplevel(root)
-    progress_window.title("Training progress")
+    progress_window_training = tk.Toplevel(root)
+    progress_window_training.title("Training progress")
 
-    text_widget = tk.Text(progress_window)
-    text_widget.pack()
+    text_widget_trainig = tk.Text(progress_window_training)
+    text_widget_trainig.pack()
+
+   
+
     k = int(k)
-    mapped_chars = map_chars(text_loader.loaded_text)
-    sigma = count_unique_chars(mapped_chars)
+    mapped_chars = ta.compute_mapped_chars()
+    sigma = ta.compute_unique_chars()
     num_dense_layers = int(dense_layers_scale.get())
     dense_layer_sizes = [int(dense_comboboxes[i].get()) for i in range(num_dense_layers)]
     num_lstm_layers = int(lstm_layers_scale.get())
@@ -160,7 +148,7 @@ def build_model():
 
     train_data_generator = generate_sequences(text_loader.loaded_text, k, mapped_chars, sigma, batch_size)
 
-    progress_callback = TrainingProgress(text_widget, total_epochs)
+    progress_callback = TrainingProgress(text_widget_trainig, total_epochs)
 
     custom_model.fit(train_data_generator, 
                      epochs=total_epochs, 

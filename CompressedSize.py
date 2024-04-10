@@ -2,15 +2,18 @@ import numpy as np
 import tensorflow as tf
 from TextAnalyzer import *
 import tkinter as tk
+import time
 
 class CompressedSize(TextAnalyzer):
-    def __init__(self, model, k, batch_size, text):
+    def __init__(self, model, k, batch_size, text, text_widget):
         super().__init__(text)
         self.model = model
         self.k = k
         self.batch_size = batch_size
         self.epsilon = 1e-10
         self.compressed_size = 0
+        self.text_widget = text_widget
+        self.last_update = time.time()
 
     def compute(self, text):
         
@@ -40,4 +43,10 @@ class CompressedSize(TextAnalyzer):
 
                 batch_sequences = []
                 batch_chars = []
+
+                if time.time() - self.last_update > 1.0:
+                    self.text_widget.delete('1.0', 'end')
+                    self.text_widget.insert('end', f"Compressed size: {round(self.compressed_size, 3)}\n")
+                    self.last_update = time.time()
+
         return self.compressed_size
