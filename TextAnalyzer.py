@@ -1,5 +1,5 @@
 from tkinter import messagebox
-
+import string
 class TextAnalyzer:
     def __init__(self, text):
         self.text = text
