@@ -6,6 +6,7 @@ from CustomModel import *
 from TrainingProgress import *
 from KthEntropyCalculator import *
 from CompressedSize import *
+from SequencesGenerator import *
 import numpy as np
 import threading
 import tkinter as tk
@@ -16,6 +17,7 @@ class MyApp:
     def __init__(self):
         self.text_loader = TextLoader()
         self.global_model = None
+        self.sequence_generator = None
     
     def init_vars(self):
         self.context_length_var = tk.StringVar()
@@ -470,7 +472,8 @@ class MyApp:
         batch_size = int(self.batch_size_var.get())
         total_epochs = self.epochs_scale.get()
 
-        train_data_generator = self.generate_sequences(self.text_loader.loaded_text, k, mapped_chars, sigma, batch_size)
+        self.sequence_generator = SequencesGenerator(self.text_loader.loaded_text, k, mapped_chars, sigma, batch_size)
+        train_data_generator = self.sequence_generator.generate_sequences()
 
         progress_callback = TrainingProgress(self.text_widget_trainig, total_epochs)
 
@@ -485,6 +488,7 @@ class MyApp:
     def run(self):
         self.root = tk.Tk()
         self.root.title("BP")
+        self.root.resizable(False, False)
 
         self.init_vars()
         self.create_top_file_frame()

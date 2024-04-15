@@ -46,7 +46,7 @@ class CompressedSize(TextAnalyzer):
 
                 if time.time() - self.last_update > 1.0:
                     self.text_widget.delete('1.0', 'end')
-                    self.text_widget.insert('end', f"Compressed size: {round(self.compressed_size, 3)}\n")
+                    self.text_widget.insert('end', f"Compressed size: {round(self.compressed_size, 3)} bits\n")
                     self.last_update = time.time()
 
         return self.compressed_size

@@ -20,14 +20,15 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         self.all_text = self.all_text + '\n'
         self.tmp_text = self.all_text
     
-    
     def on_train_batch_end(self, batch, logs=None):
         self.logs = logs or {}
         if time.time() - self.last_update > 0.1:
-            self.all_text = self.tmp_text + "Epochs: {}/{}, ETA: {}, Loss: {}, Accuracy: {}".format(
+            elapsed_time = time.time() - self.start_time
+            eta = (elapsed_time / self.current_epoch) * (self.total_epochs - self.current_epoch)
+            self.all_text = self.tmp_text + "Epochs: {}/{}, ETA: {} sec, Loss: {}, Accuracy: {}".format(
                 self.current_epoch,
                 self.total_epochs,
-                self.logs.get('eta'),
+                round(eta, 1),
                 round(self.logs.get('loss'), 3),
                 round(self.logs.get('accuracy'), 3)
             )
