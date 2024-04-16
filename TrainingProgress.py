@@ -1,10 +1,13 @@
 import tensorflow as tf
 import time
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class TrainingProgress(tf.keras.callbacks.Callback):
-    def __init__(self, text_widget, total_epochs):
+    def __init__(self, text_widget,graph_widget, total_epochs):
         super().__init__()
         self.text_widget = text_widget
+        self.graph_widget = graph_widget
         self.total_epochs = total_epochs
         self.start_time = time.time()
         self.last_update = time.time()
@@ -12,6 +15,7 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         self.current_epoch = 0
         self.all_text = ""
         self.tmp_text = ""
+        self.loss_history = [] 
 
     def on_epoch_begin(self, epoch, logs=None):
         self.current_epoch = epoch + 1
@@ -19,6 +23,7 @@ class TrainingProgress(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         self.all_text = self.all_text + '\n'
         self.tmp_text = self.all_text
+        self.loss_history.append(logs['loss'])
     
     def on_train_batch_end(self, batch, logs=None):
         self.logs = logs or {}
@@ -47,3 +52,14 @@ class TrainingProgress(tf.keras.callbacks.Callback):
             round(total_time,1)
         )
         self.text_widget.insert('end', final_text)
+
+        self.fig, self.ax = plt.subplots()
+        self.line, = self.ax.plot(self.loss_history)
+
+        self.ax.set_xlabel('Epochs')
+        self.ax.set_ylabel('Loss')
+        self.ax.set_title('Training Loss')
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_widget)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack()
