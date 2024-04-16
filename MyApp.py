@@ -337,8 +337,6 @@ class MyApp:
         self.tree.tag_configure("hidden", background="lightgrey")
         self.tree.tag_configure("output", background="#8AB9FF")
 
-
-
         self.remove_button = tk.Button(self.model_frame, image=self.trash_icon, command=self.remove_layer)
         
         self.remove_button.grid(row=1, column=2, padx=5, pady=5, sticky='sw')
@@ -413,28 +411,6 @@ class MyApp:
         self.model_frame.columnconfigure(1, weight=1)
         self.model_frame.rowconfigure(2, weight=1)
 
-    def generate_sequences(self, text, k, mapped_chars, sigma, batch_size):
-        while True:
-            batch_chars = []
-            batch_labels = []
-
-            for i in range(k, len(text)):
-                sequence = text[i - k:i + 1] # k = 3, text = abrakadabra, abra, brak, raka, akad .....
-                mapped_sequence = [mapped_chars[char] for char in sequence] # [1,2,3,1], [2,3,1,4], [3,1,4,1], [1,4,1,5] ... namapuje znaky na cisla
-                train_chars = tf.keras.utils.to_categorical(mapped_sequence[:-1], num_classes=sigma)
-                train_label = tf.keras.utils.to_categorical(mapped_sequence[-1], num_classes=sigma)
-                batch_chars.append(train_chars)
-                batch_labels.append(train_label)
-
-                if len(batch_chars) == batch_size:
-                    yield np.array(batch_chars), np.array(batch_labels)
-                    batch_chars = []
-                    batch_labels = []
-
-            if batch_chars:  # yield zbývajících znaků na konci batche
-                yield np.array(batch_chars), np.array(batch_labels)
-
-
     def save_model(self, model):
         file_path = filedialog.asksaveasfilename()
         if file_path:
@@ -468,6 +444,7 @@ class MyApp:
                         layer_layout = "Input Layer"
                         tag = "input"
                         self.context_length_var.set(str(layer.input_shape[1]))
+                        print(layer.input_shape[1])
                     elif index == total_layers - 1:
                         layer_layout = "Output Layer"
                         tag = "output"
