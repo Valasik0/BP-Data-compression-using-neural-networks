@@ -1,6 +1,4 @@
 from tkinter import ttk
-import tensorflow as tf
-from tensorflow import keras
 from TextLoader import *
 from CustomModel import *
 from TrainingProgress import *
@@ -9,9 +7,8 @@ from CompressedSize import *
 from SequencesGenerator import *
 import threading
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import PhotoImage
 from TopFileFrame import *
+import time
 
 class BottomFrame:
     def __init__(self, app):
@@ -70,8 +67,12 @@ class BottomFrame:
             return
 
         self.app.kth_entropy_var.set("Entropy: calculating...")
-        kth_entropy_calculator = KthEntropyCalculator(text, int(k))
+        start_time = time.time()
+        kth_entropy_calculator = KthEntropyCalculator(text, int(k))      
         entropy = kth_entropy_calculator.calculate_kth_entropy()
+        end_time = time.time()
+
+        print(f"Entropy calculation time: {end_time - start_time} seconds")
 
         self.entropy_label.config(text=str(round(entropy, 3)))
 

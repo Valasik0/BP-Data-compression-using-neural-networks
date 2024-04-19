@@ -210,7 +210,7 @@ class ModelFrame:
 
         self.activation_label = tk.Label(self.layer_settings_frame, text="Activation function:")
         self.activation_label.grid(row=2, column=0, sticky="w", padx = 10, pady=5)
-        self.activation_combobox = ttk.Combobox(self.layer_settings_frame, values=["relu", "sigmoid", "tanh"], state="readonly")
+        self.activation_combobox = ttk.Combobox(self.layer_settings_frame, values=["ReLU", "sigmoid", "tanh", "LeakyReLU"], state="readonly")
         self.activation_combobox.set("relu")
         self.activation_combobox.grid(row=2, column=1, sticky="w", pady=8, padx=(0, 10))
 
@@ -302,9 +302,9 @@ class ModelFrame:
         custom_model.build((None, k, sigma))
         custom_model.summary()
 
-        custom_model.compile(optimizer="adam", 
-                            loss="categorical_crossentropy", 
-                            metrics=['accuracy']) 
+        custom_model.compile(optimizer="adam",
+                     loss="categorical_crossentropy", 
+                     metrics=['accuracy'])
         
         
 

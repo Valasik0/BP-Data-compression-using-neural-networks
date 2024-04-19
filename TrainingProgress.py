@@ -33,7 +33,7 @@ class TrainingProgress(tf.keras.callbacks.Callback):
             self.all_text = self.tmp_text + "Epochs: {}/{}, ETA: {} sec, Loss: {}, Accuracy: {}".format(
                 self.current_epoch,
                 self.total_epochs,
-                round(eta, 1),
+                self.format_time(round(eta, 1)),
                 round(self.logs.get('loss'), 3),
                 round(self.logs.get('accuracy'), 3)
             )
@@ -49,7 +49,7 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         final_text = "Final Loss: {}, Final Accuracy: {}, Training time: {} sec".format(
             round(self.logs.get('loss'), 3),
             round(self.logs.get('accuracy'),3),
-            round(total_time,1)
+            self.format_time(round(total_time,1))
         )
         self.text_widget.insert('end', final_text)
 
@@ -63,3 +63,9 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_widget)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack()
+
+    def format_time(self, seconds):
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        seconds = seconds % 60
+        return "{}h {}m {}s".format(int(hours), int(minutes), int(seconds))

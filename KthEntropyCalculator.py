@@ -1,6 +1,5 @@
 import numpy as np
 from collections import defaultdict
-
 class KthEntropyCalculator:
     def __init__(self, text, k):
         self.text = text

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras.layers import LSTM, Dense, Flatten
+from keras.layers import LSTM, Dense, Flatten, LeakyReLU
 
 class CustomModel(tf.keras.Model):
     def __init__(self, layers, k, sigma):
@@ -10,10 +10,9 @@ class CustomModel(tf.keras.Model):
 
         for i, layer in enumerate(layers):
             layer_type, neurons, activation = layer
+            if activation == 'LeakyReLU':
+                activation = LeakyReLU(alpha=0.01)
             if layer_type == "Dense":
-                if i == 0 or not isinstance(self.layers_list[-1], Flatten):
-                    # If it's the first layer or the previous layer is not Flatten, add a Flatten layer before it
-                    self.layers_list.append(Flatten(input_shape=self.in_shape))
                 self.layers_list.append(Dense(units=int(neurons), activation=activation))
             elif layer_type == "LSTM":
                 if i < len(layers) - 1 and layers[i + 1][0] == "LSTM":

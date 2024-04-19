@@ -142,4 +142,4 @@ class LeftFrame:
             self.compressed_size_var.set(f"Size: {round(compressed_size, 3)} MB")
         else:
             self.compressed_size_var.set("Size: error")
-        self.progress_window_compress.destroy()
+            self.progress_window_compress.destroy()
