@@ -76,6 +76,7 @@ class TopFileFrame:
         self.file_path_label.config(text=self.app.text_loader.file_name)
         self.app.model_frame.tree.set(self.app.model_frame.output_layer_item, column=2, 
                       value="Alphabet size (" + str(self.app.sigma_value.get()) + ")")
+        self.app.kth_entropy_var.set("Entropy: ")
         
     def load_file(self):
         self.app.text_loader.load_file()

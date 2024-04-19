@@ -1,4 +1,6 @@
+from calendar import c
 from tkinter import ttk
+from unittest import result
 from TextLoader import *
 from CustomModel import *
 from TrainingProgress import *
@@ -9,7 +11,7 @@ import threading
 import tkinter as tk
 from TopFileFrame import *
 import time
-
+import entropy
 class BottomFrame:
     def __init__(self, app):
         self.app = app
@@ -67,13 +69,16 @@ class BottomFrame:
             return
 
         self.app.kth_entropy_var.set("Entropy: calculating...")
-        start_time = time.time()
-        kth_entropy_calculator = KthEntropyCalculator(text, int(k))      
-        entropy = kth_entropy_calculator.calculate_kth_entropy()
-        end_time = time.time()
 
-        print(f"Entropy calculation time: {end_time - start_time} seconds")
 
-        self.entropy_label.config(text=str(round(entropy, 3)))
+        start_time1 = time.time()
+        entropy_calculator = entropy.KthEntropyCalculator(text, int(k))
+        result = entropy_calculator.calculate_kth_entropy()
+        end_time1 = time.time()
 
-        self.app.kth_entropy_var.set(f"Entropy: {round(entropy, 3)} bpB")
+
+        print(f"Entropy calculation time: {end_time1 - start_time1} seconds")
+
+        self.entropy_label.config(text=str(round(result, 3)))
+
+        self.app.kth_entropy_var.set(f"Entropy: {round(result, 3)} bpB")
