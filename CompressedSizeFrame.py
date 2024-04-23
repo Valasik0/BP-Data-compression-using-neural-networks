@@ -1,3 +1,4 @@
+import math
 from tkinter import ttk
 from tensorflow import keras
 from TextLoader import *
@@ -128,22 +129,39 @@ class CompressedSizeFrame:
         self.progress_window_compress = tk.Toplevel(self.app.root)
         self.progress_window_compress.title("Computing compressed size")
         self.progress_window_compress.geometry("400x200")
+        self.progress_window_compress.resizable(False, False)
 
-        self.text_widget_compress = tk.Text(self.progress_window_compress)
-        self.text_widget_compress.pack()
+        self.text_widget_compress = tk.Text(self.progress_window_compress,  width=50, height=9)
+        self.text_widget_compress.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+        
 
 
         batch_size = int(self.batch_compress_size_var.get())
         compressed_size_calculator = CompressedSize(model, int(k), batch_size, text, self.text_widget_compress)
+        
+        cancel_button = tk.Button(self.progress_window_compress, text="Cancel", command=compressed_size_calculator.cancel_computation)
+        cancel_button.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+
         self.compressed_size_var.set("calculating...")
         compressed_size = compressed_size_calculator.compute(text)
         
         
 
         if compressed_size is not None:
-            compressed_size = compressed_size / (1024 * 1024 * 8)
-            print(f"Estimated compressed size: {compressed_size} MB")
-            self.compressed_size_var.set(f"Size: {round(compressed_size, 3)} MB")
+            compressed_size = compressed_size / 8
+            print(f"Estimated compressed size: {self.convert_size(compressed_size)}")
+            self.compressed_size_var.set(f"Size: {self.convert_size(compressed_size)}")
         else:
             self.compressed_size_var.set("Size: error")
             self.progress_window_compress.destroy()
+
+
+    def convert_size(self, size_bytes):
+        if size_bytes == 0:
+            return "0B"
+        size_name = ("B", "kB", "MB", "GB")
+        i = int(math.floor(math.log(size_bytes, 1024)))
+        p = math.pow(1024, i)
+        s = round(size_bytes / p, 2)
+        return f"{s} {size_name[i]}"

@@ -1,3 +1,4 @@
+from calendar import c
 from tkinter import ttk
 from TextLoader import *
 from CustomModel import *
@@ -41,6 +42,8 @@ class ModelFrame:
         self.progress_window_training = None
         self.text_widget_trainig = None
         self.graph_widget = None
+        self.optimizer_combobox = None
+        self.optimizer_label = None
 
     def create_model_frame(self):
         self.model_frame = tk.Frame(self.app.root,
@@ -71,25 +74,44 @@ class ModelFrame:
         neurons = self.neurons_entry.get()
         layer_type = self.layer_type_combobox.get()
 
-        if layer_type != 'Flatten' and not neurons:
+        rows = self.tree.get_children()
+
+        if not neurons:
             messagebox.showerror("Invalid input", "Number of neurons cannot be empty.")
             return
+             
+        if layer_type == "LSTM" and len(rows) > 1 and not self.input_layer_var.get():
+            prev_layer = self.tree.item(rows[-2])['values']
+            if prev_layer[1] == "Dense":
+                messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
+                return
+            elif prev_layer[1] == "Flatten":
+                for row in reversed(rows[:-1]):
+                    row_values = self.tree.item(row)['values']
+                    if row_values[1] != 'Flatten':
+                        break
+                if row_values[1] == "Dense":
+                    messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
+                    return
+        
+            
 
         if self.input_layer_var.get() and self.input_layer_set:
             messagebox.showerror("Invalid input", "Input layer has already been set.")
             return
-        elif self.input_layer_var.get():
+        
+        elif self.input_layer_var.get() and not self.input_layer_set:
+            if layer_type == "Dense" and len(rows) > 0 and self.tree.item(rows[0])['values'][1] == "LSTM":
+                messagebox.showerror("Invalid Layer", "A Dense layer cannot be added before a LSTM layer.")
+                return
             layer_layout = "Input Layer"
             self.input_layer_set = True
             self.input_layer_var.set(False)
             self.input_layer_checkbox.config(state='disabled')
-
         
-        layer_type = self.layer_type_combobox.get()
         
         activation = self.activation_combobox.get()
-
-        
+  
 
         if layer_layout == "Input Layer":
             self.tree.insert('', 0, values=(layer_layout, layer_type, neurons, activation), tags=("input",))
@@ -105,30 +127,34 @@ class ModelFrame:
         
         if "input" in self.tree.item(selected_item, "tags"):
             self.input_layer_set = False
-            self.input_layer_var.set(False)
             self.input_layer_checkbox.config(state='normal')
             
         self.tree.delete(selected_item)   
 
 
     def on_layer_type_changed(self, event):
-        # Get the current layer type
         layer_type = self.layer_type_combobox.get()
 
-        # If the layer type is 'Flatten', disable the neurons entry and activation combobox
         if layer_type == 'Flatten':
             self.neurons_entry.delete(0, 'end')
             self.neurons_entry.insert(0, 'None')
             self.neurons_entry.config(state='disabled')
             self.activation_combobox.config(state='disabled')
             self.input_layer_checkbox.config(state='disabled')
+            self.input_layer_checkbox.deselect()
             self.activation_combobox.set('None')
             
         else:
             self.neurons_entry.config(state='normal')
             self.activation_combobox.config(state='readonly')
+            self.input_layer_checkbox.config(state='normal')
             self.activation_combobox.set('relu')
             self.neurons_entry.delete(0, 'end')
+    
+    def clear_layers(self):
+        items = self.tree.get_children()
+        for i in items[:-1]:  # Skip the last item
+            self.tree.delete(i)
 
     def create_model_frame_widgets(self):
         self.trash_icon = PhotoImage(file="img\860829.png")
@@ -152,7 +178,7 @@ class ModelFrame:
         self.tree.heading("activation", text="Activation")
         self.tree.grid(row=1, column=0, pady=5, padx=(5, 0), columnspan=2)  # Adjust the row and column as needed
         self.output_layer_item = self.tree.insert('', 'end', values=("Output Layer", 
-                                            "Dense", 
+                                            "Output Dense", 
                                             "Alphabet size (" + str(self.app.sigma_value.get()) + ")", 
                                             "softmax"), 
                                             tags=("output",))
@@ -172,7 +198,10 @@ class ModelFrame:
         self.tree.tag_configure("hidden", background="lightgrey")
         self.tree.tag_configure("output", background="#8AB9FF")
 
-        self.remove_button = tk.Button(self.model_frame, image=self.trash_icon, command=self.remove_layer)
+        self.create_tree_context_menu()
+        self.tree.bind("<Button-3>", self.on_tree_right_click)
+
+        self.remove_button = tk.Button(self.model_frame, image=self.trash_icon, command=self.clear_layers)
         
         self.remove_button.grid(row=1, column=2, padx=5, pady=5, sticky='sw')
 
@@ -229,22 +258,45 @@ class ModelFrame:
         self.batch_size_combobox.set(256)
         self.batch_size_combobox.grid(row=0, column=1, sticky="w", pady=8)
 
+        self.optimizer_label = tk.Label(self.run_settings_frame, text="Optimizer:")
+        self.optimizer_label.grid(row=1, column=0, sticky="w", pady=8, padx=10)
+
+        self.optimizer_combobox = ttk.Combobox(self.run_settings_frame, values=self.batch_sizes, state="readonly")
+        self.optimizer_combobox['values'] = ('adam', 'sgd', 'rmsprop', 'adagrad')
+        self.optimizer_combobox.current(0)
+        self.optimizer_combobox.grid(row=1, column=1, sticky="w", pady=8)
+
         self.epochs_label = tk.Label(self.run_settings_frame, text="Total epochs:")
-        self.epochs_label.grid(row=1, column=0, sticky="w", pady=(15, 0), padx=10)
+        self.epochs_label.grid(row=2, column=0, sticky="w", pady=(15, 0), padx=10)
 
         self.epochs_scale = tk.Scale(self.run_settings_frame, orient=tk.HORIZONTAL, from_=1, to=100, length=140)
         self.epochs_scale.set(10)
-        self.epochs_scale.grid(row=1, column=1, sticky="w", pady=8)
+        self.epochs_scale.grid(row=2, column=1, sticky="w", pady=8)
+
+        
 
         self.run_button = ttk.Button(self.run_settings_frame, style="Custom2.TButton", text="Run", command=lambda: threading.Thread(target=self.build_model).start())
-        self.run_button.grid(row=2, column=0, columnspan=2, sticky="w", pady=8, padx=10)
+        self.run_button.grid(row=3, column=0, columnspan=2, sticky="w", pady=8, padx=10)
 
         self.save_model_button = ttk.Button(self.run_settings_frame, style="Custom2.TButton", text="Save model", command=lambda: self.save_model(self.app.global_model), state="disabled") 
-        self.save_model_button.grid(row=3, column=0, columnspan=2, sticky="w", pady=8, padx=10)
+        self.save_model_button.grid(row=4, column=0, columnspan=2, sticky="w", pady=8, padx=10)
 
         self.model_frame.columnconfigure(0, weight=1)
         self.model_frame.columnconfigure(1, weight=1)
         self.model_frame.rowconfigure(2, weight=1)
+
+    def create_tree_context_menu(self):
+        self.tree_context_menu = tk.Menu(self.tree, tearoff=0)
+        self.tree_context_menu.add_command(label="Delete", command=self.remove_layer)
+
+    def delete_selected_tree_item(self):
+        selected_item = self.tree.selection()[0] 
+        self.tree.delete(selected_item)
+
+    def on_tree_right_click(self, event):
+        item_id = self.tree.identify_row(event.y)
+        self.tree.selection_set(item_id)
+        self.tree_context_menu.post(event.x_root, event.y_root)
     
     def save_model(self, model):
         file_path = filedialog.asksaveasfilename()
@@ -272,9 +324,12 @@ class ModelFrame:
         
         self.progress_window_training = tk.Toplevel(self.app.root)
         self.progress_window_training.title("Training progress")
+        self.progress_window_training.resizable(False, False)
 
         self.text_widget_trainig = tk.Text(self.progress_window_training)
         self.text_widget_trainig.grid(row=0, column=0)
+
+        
 
         self.graph_widget = tk.Canvas(self.progress_window_training)
         
@@ -298,11 +353,14 @@ class ModelFrame:
         custom_model.build((None, k, sigma))
         custom_model.summary()
 
-        custom_model.compile(optimizer="adam",
+        selected_optimizer = self.optimizer_combobox.get()
+
+        custom_model.compile(optimizer=selected_optimizer,
                      loss="categorical_crossentropy", 
                      metrics=['accuracy'])
         
-        
+        self.cancel_button = tk.Button(self.progress_window_training, text="Cancel", command=lambda: self.cancel_training(custom_model))
+        self.cancel_button.grid(row=1, column=0, sticky="W", pady=5, padx=5)
 
         batch_size = int(self.batch_size_var.get())
         total_epochs = self.epochs_scale.get()
@@ -321,4 +379,10 @@ class ModelFrame:
 
         self.app.global_model = custom_model 
         self.save_model_button.config(state="normal")
-        self.graph_widget.grid(row=0, column=1)
+        if self.graph_widget.winfo_exists():
+            self.graph_widget.grid(row=0, column=1)
+
+    def cancel_training(self, custom_model):
+
+        custom_model.stop_training = True
+        self.progress_window_training.winfo_toplevel().destroy()

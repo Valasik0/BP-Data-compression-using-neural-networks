@@ -14,6 +14,8 @@ class CustomModel(tf.keras.Model):
             if activation == 'LeakyReLU':
                 activation = LeakyReLU(alpha=0.01)
             if layer_type == "Dense":
+                if i == 0:
+                    self.model.add(Flatten(input_shape=self.in_shape))
                 self.model.add(Dense(units=int(neurons), activation=activation))
             elif layer_type == "LSTM":
                 if i < len(layers) - 1 and layers[i + 1][0] == "LSTM":
@@ -21,7 +23,6 @@ class CustomModel(tf.keras.Model):
                 else:
                     return_sequences = False
                 if i == 0:
-                    # If it's the first layer, set the input_shape
                     self.model.add(LSTM(units=int(neurons), activation=activation, return_sequences=return_sequences, input_shape=self.in_shape))
                 else:
                     self.model.add(LSTM(units=int(neurons), activation=activation, return_sequences=return_sequences))

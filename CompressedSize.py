@@ -14,6 +14,7 @@ class CompressedSize(TextAnalyzer):
         self.compressed_size = 0
         self.text_widget = text_widget
         self.last_update = time.time()
+        self.stop_computation = False
 
     def compute(self, text):
         
@@ -42,6 +43,8 @@ class CompressedSize(TextAnalyzer):
         mapped_text = [self.mapped_chars[char] if char in self.mapped_chars else self.mapped_chars['<UNK>'] for char in text]
 
         for i in range(self.k, len(mapped_text)):
+            if self.stop_computation:
+                return None
             sequence = mapped_text[i - self.k:i]
             batch_sequences.append(tf.keras.utils.to_categorical(sequence, num_classes=self.sigma))
             actual_char_index = mapped_text[i]
@@ -62,3 +65,6 @@ class CompressedSize(TextAnalyzer):
                         self.last_update = time.time()
 
         return self.compressed_size
+    
+    def cancel_computation(self):
+        self.stop_computation = True

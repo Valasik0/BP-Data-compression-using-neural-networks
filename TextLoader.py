@@ -15,10 +15,9 @@ class TextLoader:
                     self.loaded_text = file.read()
                     self.file_name = file_path
                     self.file_size = self.format_file_size(file_path)
-                    messagebox.showinfo("Information", "Text loaded.")
-                    
+                    return True
             else:
-                self.loaded_text = ""
+                return None
         except Exception as e:
             messagebox.showerror(title="Error", message=f"An error occurred: {e}")
             self.loaded_text = ""

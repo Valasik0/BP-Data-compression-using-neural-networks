@@ -1,3 +1,4 @@
+import sys
 from TextLoader import *
 from CustomModel import *
 from TrainingProgress import *
@@ -19,6 +20,7 @@ class MyApp:
         self.left_frame = None
         self.model_frame = None
         self.bottom_frame = None
+        
 
     
     def init_vars(self):
@@ -33,10 +35,11 @@ class MyApp:
         self.batch_compress_size_var = tk.StringVar()
         self.kth_entropy_var.set("Entropy: ")
         self.text_size_var = tk.StringVar()
-        self.text_size_var.set("Text size: ")
+        self.text_size_var.set("File size: ")
         self.sigma_var = tk.StringVar()
         self.sigma_var.set("Alphabet size: ")
         self.sigma_value = tk.IntVar()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def configure_frames(self):
         self.root.grid_rowconfigure(0, weight=1)
@@ -60,3 +63,12 @@ class MyApp:
         self.bottom_frame.create_bottom_frame_widgets()
 
         self.root.mainloop()
+
+    def on_close(self):
+        # Perform any cleanup here
+
+        # Destroy the window
+        self.root.destroy()
+
+        # Exit the application
+        sys.exit(0)

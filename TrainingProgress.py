@@ -17,6 +17,7 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         self.all_text = ""
         self.tmp_text = ""
         self.loss_history = [] 
+        
 
     def on_epoch_begin(self, epoch, logs=None):
         self.current_epoch = epoch + 1
@@ -32,43 +33,48 @@ class TrainingProgress(tf.keras.callbacks.Callback):
         if time.time() - self.last_update > 0.1:
             elapsed_time = time.time() - self.start_time
             eta = (elapsed_time / self.current_epoch) * (self.total_epochs - self.current_epoch)
-            self.all_text = self.tmp_text + "Epochs: {}/{}, ETA: {} sec, Loss: {}, Accuracy: {}".format(
+            self.all_text = self.tmp_text + "Epochs: {}/{}, ETA: {}, Loss: {}, Accuracy: {}".format(
                 self.current_epoch,
                 self.total_epochs,
                 self.format_time(round(eta, 1)),
                 round(self.logs.get('loss'), 3),
                 round(self.logs.get('accuracy'), 3)
             )
-
-            self.text_widget.delete('1.0', 'end')
-            self.text_widget.insert('1.0', self.all_text)
+            if self.text_widget.winfo_exists():
+                self.text_widget.delete('1.0', 'end')
+                self.text_widget.insert('1.0', self.all_text)
             self.last_update = time.time()
     
 
     def on_train_end(self, logs=None):
-        self.text_widget.insert('end', "\n")
-        total_time = time.time() - self.start_time
-        final_text = "Training completed. Final Loss: {}, Final Accuracy: {}, Training time: {} sec".format(
-            round(self.logs.get('loss'), 3),
-            round(self.logs.get('accuracy'),3),
-            self.format_time(round(total_time,1))
-        )
-        self.text_widget.insert('end', final_text)
+        if self.text_widget.winfo_exists():
+            self.text_widget.insert('end', "\n")
+            total_time = time.time() - self.start_time
+            final_text = "Completed. Final Loss: {}, Final Accuracy: {}, Training time: {}".format(
+                round(self.logs.get('loss'), 3),
+                round(self.logs.get('accuracy'),3),
+                self.format_time(round(total_time,1))
+            )
+            self.text_widget.insert('end', final_text)
 
-        # Změny pro vykreslení grafu v hlavním vlákně
-        self.graph_widget.after(100, self.draw_graph)
+        if self.graph_widget.winfo_exists():
+            self.graph_widget.after(100, self.draw_graph)
 
     def draw_graph(self):
-        self.fig, self.ax = plt.subplots()
-        self.line, = self.ax.plot(self.loss_history)
+        if self.text_widget.winfo_exists() and self.graph_widget.winfo_exists():
+            widget_height = self.text_widget.winfo_height()
+            fig_height = widget_height / self.graph_widget.winfo_fpixels('1i')
 
-        self.ax.set_xlabel('Epochs')
-        self.ax.set_ylabel('Loss')
-        self.ax.set_title('Training Loss')
+            self.fig, self.ax = plt.subplots(figsize=(fig_height, fig_height))
+            self.line, = self.ax.plot(self.loss_history)
 
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_widget)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack()
+            self.ax.set_xlabel('Epochs')
+            self.ax.set_ylabel('Loss')
+            self.ax.set_title('Training Loss')
+
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_widget)
+            self.canvas.draw()
+            self.canvas.get_tk_widget().pack()
 
     def format_time(self, seconds):
         hours = seconds // 3600
