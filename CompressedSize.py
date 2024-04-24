@@ -66,5 +66,6 @@ class CompressedSize(TextAnalyzer):
 
         return self.compressed_size
     
-    def cancel_computation(self):
+    def cancel_computation(self, progress_window_compress):
         self.stop_computation = True
+        progress_window_compress.destroy()

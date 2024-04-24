@@ -140,7 +140,7 @@ class CompressedSizeFrame:
         batch_size = int(self.batch_compress_size_var.get())
         compressed_size_calculator = CompressedSize(model, int(k), batch_size, text, self.text_widget_compress)
         
-        cancel_button = tk.Button(self.progress_window_compress, text="Cancel", command=compressed_size_calculator.cancel_computation)
+        cancel_button = tk.Button(self.progress_window_compress, text="Cancel",command= lambda:compressed_size_calculator.cancel_computation(self.progress_window_compress))
         cancel_button.grid(row=1, column=0, padx=5, pady=5, sticky="w")
 
         self.compressed_size_var.set("calculating...")

@@ -1,4 +1,4 @@
-from calendar import c
+
 from tkinter import ttk
 from TextLoader import *
 from CustomModel import *
@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import PhotoImage
 from TopFileFrame import *
+from tensorflow.keras.callbacks import EarlyStopping
 
 class ModelFrame:
     def __init__(self, app):
@@ -386,10 +387,11 @@ class ModelFrame:
 
         progress_callback = TrainingProgress(self.text_widget_trainig, self.graph_widget, total_epochs)
 
+        early_stopping_callback = EarlyStopping(monitor='loss', patience=2)
         custom_model.fit(train_data_generator, 
                         epochs=total_epochs, 
                         steps_per_epoch=(len(txt)-k)//batch_size,
-                        callbacks=[progress_callback]) 
+                        callbacks=[progress_callback, early_stopping_callback]) 
         
         
 
