@@ -59,7 +59,12 @@ class TextInfoFrame:
         self.entropy_button.grid(row=4, column=0, pady=(5, 15), padx=22, sticky="w")
 
     def kth_order_entropy(self, text, k):
+        if not text:
+            tk.messagebox.showinfo("Info", "No file loaded")
+            return
+
         ta = TextAnalyzer(text)
+
         if not ta.validate_text():
             return
         

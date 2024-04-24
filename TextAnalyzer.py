@@ -26,9 +26,9 @@ class TextAnalyzer:
 
     def validate_text(self):
         if not isinstance(self.text, bytes):
-            messagebox.showerror("Error", "Loaded text is in incorrect format.")
+            messagebox.showerror("Error", "Loaded file is in incorrect format.")
             return False
         if len(self.text) == 0:
-            messagebox.showinfo("Info", "Loaded text is empty. Please load a text.")
+            messagebox.showinfo("Info", "No text loaded")
             return False
         return True

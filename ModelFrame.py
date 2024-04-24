@@ -93,7 +93,9 @@ class ModelFrame:
                 if row_values[1] == "Dense":
                     messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
                     return
-        
+                elif row_values[1] == "LSTM":
+                    messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Flatten layer that follows a LSTM layer.")
+                    return
             
 
         if self.input_layer_var.get() and self.input_layer_set:
@@ -101,6 +103,12 @@ class ModelFrame:
             return
         
         elif self.input_layer_var.get() and not self.input_layer_set:
+            for i in range(len(rows) - 1):
+                current_layer = self.tree.item(rows[i])['values']
+                next_layer = self.tree.item(rows[i + 1])['values']
+                if current_layer[1] == 'Flatten' and next_layer[1] == 'LSTM':
+                    messagebox.showerror("Invalid Layer", "A Dense layer cannot be added as input before a LSTM layer that follows a Flatten layer.")
+                    return
             if layer_type == "Dense" and len(rows) > 0 and self.tree.item(rows[0])['values'][1] == "LSTM":
                 messagebox.showerror("Invalid Layer", "A Dense layer cannot be added before a LSTM layer.")
                 return
@@ -155,6 +163,9 @@ class ModelFrame:
         items = self.tree.get_children()
         for i in items[:-1]:  # Skip the last item
             self.tree.delete(i)
+        self.input_layer_checkbox.config(state='normal')
+        self.input_layer_set = False
+        self.input_layer_var.set(False)
 
     def create_model_frame_widgets(self):
         self.trash_icon = PhotoImage(file="img\860829.png")
@@ -311,7 +322,12 @@ class ModelFrame:
             tk.messagebox.showerror("Error", "No input layer selected")
             return
         
-        ta = TextAnalyzer(self.app.text_loader.loaded_text)
+        txt = self.app.text_loader.loaded_text
+        if not txt:
+            tk.messagebox.showerror("Error", "No file loaded")
+            return
+
+        ta = TextAnalyzer(txt)
 
         if not ta.validate_text():
             return
@@ -365,14 +381,14 @@ class ModelFrame:
         batch_size = int(self.batch_size_var.get())
         total_epochs = self.epochs_scale.get()
 
-        self.sequence_generator = SequencesGenerator(self.app.text_loader.loaded_text, k, mapped_chars, sigma, batch_size)
+        self.sequence_generator = SequencesGenerator(txt, k, mapped_chars, sigma, batch_size)
         train_data_generator = self.sequence_generator.generate_sequences()
 
         progress_callback = TrainingProgress(self.text_widget_trainig, self.graph_widget, total_epochs)
 
         custom_model.fit(train_data_generator, 
                         epochs=total_epochs, 
-                        steps_per_epoch=(len(self.app.text_loader.loaded_text)-k)//batch_size,
+                        steps_per_epoch=(len(txt)-k)//batch_size,
                         callbacks=[progress_callback]) 
         
         
