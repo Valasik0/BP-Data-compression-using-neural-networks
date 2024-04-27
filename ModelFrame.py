@@ -1,4 +1,5 @@
 
+from selectors import SelectSelector
 from tkinter import ttk
 from TextLoader import *
 from CustomModel import *
@@ -10,6 +11,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import PhotoImage
 from TopFileFrame import *
+from ToolTip import *
 from tensorflow.keras.callbacks import EarlyStopping
 
 class ModelFrame:
@@ -17,20 +19,20 @@ class ModelFrame:
         self.app = app	
         self.model_frame = None
         self.layer_type_combobox = None
-        self.input_layer_var = None
-        self.input_layer_set = False
         self.tree = None
         self.trash_icon = None
         self.model_label = None
         self.output_layer_item = None
         self.remove_button = None
         self.layer_settings_frame = None
-        self.input_layer_checkbox = None
         self.layer_type_label = None
         self.neurons_label = None
         self.activation_label = None
         self.activation_combobox = None
-        self.add_layer_button = None
+        self.add_before_button = None
+        self.add_after_button = None
+        self.edit_layer_button = None  
+        self.right_click = False
         self.run_settings_frame = None
         self.batch_size_label = None
         self.batch_size_combobox = None
@@ -62,83 +64,24 @@ class ModelFrame:
         try:
             value = int(new_text)
             if value < 1 or value > 2048:
-                messagebox.showerror("Invalid input", "Number of units must be an integer between 1 and 2048.")
                 return False
         except ValueError:
-            messagebox.showerror("Invalid input", "Number of units must be an integer between 1 and 2048.")
             return False
 
         return True
     
-    def add_layer(self):
-        layer_layout = "Hidden Layer"
-        neurons = self.neurons_entry.get()
-        layer_type = self.layer_type_combobox.get()
-
-        rows = self.tree.get_children()
-
-        if not neurons:
-            messagebox.showerror("Invalid input", "Number of neurons cannot be empty.")
-            return
-             
-        if layer_type == "LSTM" and len(rows) > 1 and not self.input_layer_var.get():
-            prev_layer = self.tree.item(rows[-2])['values']
-            if prev_layer[1] == "Dense":
-                messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
-                return
-            elif prev_layer[1] == "Flatten":
-                for row in reversed(rows[:-1]):
-                    row_values = self.tree.item(row)['values']
-                    if row_values[1] != 'Flatten':
-                        break
-                if row_values[1] == "Dense":
-                    messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
-                    return
-                elif row_values[1] == "LSTM":
-                    messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Flatten layer that follows a LSTM layer.")
-                    return
-            
-
-        if self.input_layer_var.get() and self.input_layer_set:
-            messagebox.showerror("Invalid input", "Input layer has already been set.")
-            return
-        
-        elif self.input_layer_var.get() and not self.input_layer_set:
-            for i in range(len(rows) - 1):
-                current_layer = self.tree.item(rows[i])['values']
-                next_layer = self.tree.item(rows[i + 1])['values']
-                if current_layer[1] == 'Flatten' and next_layer[1] == 'LSTM':
-                    messagebox.showerror("Invalid Layer", "A Dense layer cannot be added as input before a LSTM layer that follows a Flatten layer.")
-                    return
-            if layer_type == "Dense" and len(rows) > 0 and self.tree.item(rows[0])['values'][1] == "LSTM":
-                messagebox.showerror("Invalid Layer", "A Dense layer cannot be added before a LSTM layer.")
-                return
-            layer_layout = "Input Layer"
-            self.input_layer_set = True
-            self.input_layer_var.set(False)
-            self.input_layer_checkbox.config(state='disabled')
-        
-        
-        activation = self.activation_combobox.get()
-  
-
-        if layer_layout == "Input Layer":
-            self.tree.insert('', 0, values=(layer_layout, layer_type, neurons, activation), tags=("input",))
-        else:
-            output_layer = self.tree.get_children()[-1]
-            self.tree.insert('', self.tree.index(output_layer), values=(layer_layout, layer_type, neurons, activation), tags=("hidden",))
-
+    
     def remove_layer(self):
         selected_item = self.tree.selection()
-        if "output" in self.tree.item(selected_item, "tags"):
-            messagebox.showerror("Invalid operation", "Cannot remove the output layer.")
-            return
-        
-        if "input" in self.tree.item(selected_item, "tags"):
-            self.input_layer_set = False
-            self.input_layer_checkbox.config(state='normal')
+        if selected_item:
+            if "output" in self.tree.item(selected_item, "tags"):
+                messagebox.showerror("Invalid operation", "Cannot remove the output layer.")
+                return
+            elif "input" in self.tree.item(selected_item, "tags"):
+                messagebox.showerror("Invalid operation", "Cannot remove the input layer.")
+                return
             
-        self.tree.delete(selected_item)   
+            self.tree.delete(selected_item) 
 
 
     def on_layer_type_changed(self, event):
@@ -149,24 +92,98 @@ class ModelFrame:
             self.neurons_entry.insert(0, 'None')
             self.neurons_entry.config(state='disabled')
             self.activation_combobox.config(state='disabled')
-            self.input_layer_checkbox.config(state='disabled')
-            self.input_layer_checkbox.deselect()
             self.activation_combobox.set('None')
             
         else:
             self.neurons_entry.config(state='normal')
             self.activation_combobox.config(state='readonly')
-            self.input_layer_checkbox.config(state='normal')
             self.activation_combobox.set('relu')
             self.neurons_entry.delete(0, 'end')
     
     def clear_layers(self):
         items = self.tree.get_children()
-        for i in items[:-1]:  # Skip the last item
+        for i in items[1:-1]:
             self.tree.delete(i)
-        self.input_layer_checkbox.config(state='normal')
-        self.input_layer_set = False
-        self.input_layer_var.set(False)
+    
+    def select_item(self, event):
+        if self.right_click:
+            self.right_click = False
+            return
+        
+        selected_item = self.tree.focus()
+        selected_item_tags = self.tree.item(selected_item, "tags")
+        
+        if "input" in selected_item_tags:
+            self.add_before_button.config(state='disabled')
+            self.add_after_button.config(state='normal', command=lambda: self.add_layer_after(selected_item))
+        elif "output" in selected_item_tags:
+            self.add_before_button.config(state='normal', command=lambda: self.add_layer_before(selected_item))
+            self.add_after_button.config(state='disabled')
+        else:
+            self.add_before_button.config(state='normal', command=lambda: self.add_layer_before(selected_item))
+            self.add_after_button.config(state='normal', command=lambda: self.add_layer_after(selected_item))
+
+    def add_layer_before(self, selected_item):
+        layer_layout = "Hidden Layer"
+        neurons = self.neurons_entry.get()
+        layer_type = self.layer_type_combobox.get()
+        
+        if not self.validate_layer(layer_type, selected_item):
+            return
+        
+        if layer_type == "Dense" and self.tree.item(selected_item, "values")[1] == "LSTM":
+            messagebox.showerror("Invalid Layer", "A Dense layer cannot be added before a LSTM layer.")
+            return
+
+        self.tree.insert('', self.tree.index(selected_item), text=layer_layout, values=(layer_layout, layer_type, neurons, self.activation_combobox.get()))
+
+
+    def add_layer_after(self, selected_item):
+        layer_layout = "Hidden Layer"
+        neurons = self.neurons_entry.get()
+        layer_type = self.layer_type_combobox.get()
+        if not self.validate_layer(layer_type, selected_item):
+            return
+        
+        if layer_type == "LSTM" and self.tree.item(selected_item, "values")[1] == "Dense":
+            messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
+            return
+
+        self.tree.insert('', self.tree.index(selected_item) + 1, text=layer_layout, values=(layer_layout, layer_type, neurons, self.activation_combobox.get()))
+
+    def validate_layer(self, layer_type, selected_item):
+        neurons = self.neurons_entry.get()
+        items = self.tree.get_children()
+        selected_index = items.index(selected_item)
+
+        if not neurons:
+            messagebox.showerror("Invalid input", "Number of neurons cannot be empty.")
+            return False
+        
+
+        if layer_type == "Dense" and self.check_lstm_below_in_model(selected_index):
+            messagebox.showerror("Invalid Layer", "A Dense layer cannot be added before a LSTM layer.")
+            return False
+
+        if layer_type == "LSTM" and self.check_dense_above_in_model(selected_index):
+            messagebox.showerror("Invalid Layer", "A LSTM layer cannot be added after a Dense layer.")
+            return False
+        
+        return True
+    
+    def check_lstm_below_in_model(self, selected_index):
+        items = self.tree.get_children()
+        for i in range(selected_index + 1, len(items)):
+            if self.tree.item(items[i], "values")[1] == "LSTM":
+                return True
+        return False
+    
+    def check_dense_above_in_model(self, selected_index):
+        items = self.tree.get_children()
+        for i in range(selected_index):
+            if self.tree.item(items[i], "values")[1] == "Dense":
+                return True
+        return False
 
     def create_model_frame_widgets(self):
         self.trash_icon = PhotoImage(file="img\860829.png")
@@ -189,7 +206,14 @@ class ModelFrame:
         self.tree.heading("units", text="Units")
         self.tree.heading("activation", text="Activation")
         self.tree.grid(row=1, column=0, pady=5, padx=(5, 0), columnspan=2)  # Adjust the row and column as needed
-        self.output_layer_item = self.tree.insert('', 'end', values=("Output Layer", 
+        
+        self.input_layer_item = self.tree.insert('', 'end', values=("Input Layer", 
+                                        "LSTM", 
+                                        "64", 
+                                        "tanh"), 
+                                        tags=("input",))
+
+        self.output_layer_item = self.tree.insert('', 'end', values=("Output Layer (Default)", 
                                             "Output Dense", 
                                             "Alphabet size (" + str(self.app.sigma_value.get()) + ")", 
                                             "softmax"), 
@@ -212,6 +236,7 @@ class ModelFrame:
 
         self.create_tree_context_menu()
         self.tree.bind("<Button-3>", self.on_tree_right_click)
+        self.tree.bind('<<TreeviewSelect>>', self.select_item)
 
         self.remove_button = tk.Button(self.model_frame, image=self.trash_icon, command=self.clear_layers)
         
@@ -227,9 +252,7 @@ class ModelFrame:
         self.layer_settings_frame.grid(row=2, column=0, pady=5, padx=5, sticky="nsew")
 
         self.input_layer_var = tk.IntVar()
-        self.input_layer_checkbox = tk.Checkbutton(self.layer_settings_frame, text="Set as input layer", variable=self.input_layer_var)
-        self.input_layer_checkbox.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=8)
-
+    
         self.layer_type_label = tk.Label(self.layer_settings_frame, text="Layer type:")
         self.layer_type_label.grid(row=0, column=0, sticky="w", padx = 10, pady=8)
 
@@ -244,6 +267,7 @@ class ModelFrame:
         validation = self.layer_settings_frame.register(self.validate_neuron_count)
         self.neurons_entry = tk.Entry(self.layer_settings_frame, validate="key", validatecommand=(validation, '%P'))
         self.neurons_entry.grid(row=1, column=1, sticky="w", pady=8)
+        self.create_tooltip(self.neurons_entry, "Číslo v rozmezí 1-2048")
 
         self.activation_label = tk.Label(self.layer_settings_frame, text="Activation function:")
         self.activation_label.grid(row=2, column=0, sticky="w", padx = 10, pady=5)
@@ -251,8 +275,11 @@ class ModelFrame:
         self.activation_combobox.set("relu")
         self.activation_combobox.grid(row=2, column=1, sticky="w", pady=8, padx=(0, 10))
 
-        self.add_layer_button = ttk.Button(self.layer_settings_frame, text="Add Layer", command=self.add_layer)
-        self.add_layer_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=8)
+        self.add_before_button = ttk.Button(self.layer_settings_frame, text="Add Before", state='disabled')
+        self.add_after_button = ttk.Button(self.layer_settings_frame, text="Add After", state='disabled')
+        
+        self.add_before_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.add_after_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=6)
 
         # Create the run settings frame
         self.run_settings_frame = tk.Frame(self.model_frame,
@@ -297,18 +324,87 @@ class ModelFrame:
         self.model_frame.columnconfigure(1, weight=1)
         self.model_frame.rowconfigure(2, weight=1)
 
+
+    def edit_layer(self, selected_item):
+        items = self.tree.get_children()
+        if selected_item:
+            if "output" in self.tree.item(selected_item, "tags"):
+                messagebox.showerror("Invalid operation", "Cannot edit the output layer.")
+                return
+            if self.tree.item(selected_item, "values")[1] == "Flatten":
+                messagebox.showerror("Invalid operation", "Cannot edit the Flatten layer.")
+                return
+            
+            self.activation_combobox.config(state='readonly')
+            self.neurons_entry.config(state='normal')
+            self.layer_type_combobox.config(state='readonly')
+            self.activation_combobox.set(self.tree.item(selected_item, "values")[3])
+            self.neurons_entry.delete(0, 'end')
+            self.neurons_entry.insert(0, self.tree.item(selected_item, "values")[2])
+            self.layer_type_combobox.set(self.tree.item(selected_item, "values")[1])
+
+            self.add_before_button.grid_remove()
+            self.add_after_button.grid_remove()
+
+            self.edit_layer_button = ttk.Button(self.layer_settings_frame, text="Confirm edit", command=lambda: self.confirm_edit(selected_item))
+            self.edit_layer_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+                
+    def confirm_edit(self, selected_item):
+        layer_type = self.layer_type_combobox.get()
+        if not self.validate_layer(layer_type, selected_item):
+            return
+        
+        if self.tree.item(selected_item, "values")[0] == "Input Layer":
+            if layer_type == "Flatten":
+                messagebox.showerror("Invalid operation", "Cannot change the input layer to Flatten.")
+                return
+            elif layer_type == "Dense":
+                items = self.tree.get_children()
+                for i in items:
+                    if i == selected_item:
+                        continue
+                    if self.tree.item(i, "values")[1] == "LSTM":
+                        messagebox.showerror("Invalid operation", "Cannot change the input layer to Dense followed by LSTM.")
+                        return
+                
+            self.tree.item(selected_item, values=("Input Layer", layer_type, self.neurons_entry.get(), self.activation_combobox.get()))
+
+        else:
+            self.tree.item(selected_item, values=("Hidden Layer", layer_type, self.neurons_entry.get(), self.activation_combobox.get()))
+        self.neurons_entry.delete(0, 'end')
+        self.edit_layer_button.grid_remove()
+        self.add_before_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.add_after_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.add_after_button.config(state='disabled')
+        self.add_before_button.config(state='disabled')
+
+    def create_tooltip(self, widget, text):
+        tool_tip = ToolTip(widget)
+        def enter(event):
+            tool_tip.show_tip(text)
+        def leave(event):
+            tool_tip.hide_tip()
+        widget.bind('<Enter>', enter)
+        widget.bind('<Leave>', leave)
+
     def create_tree_context_menu(self):
         self.tree_context_menu = tk.Menu(self.tree, tearoff=0)
         self.tree_context_menu.add_command(label="Delete", command=self.remove_layer)
+        self.tree_context_menu.add_command(label="Edit", command=lambda: self.edit_layer(self.tree.selection()[0]))
 
     def delete_selected_tree_item(self):
         selected_item = self.tree.selection()[0] 
         self.tree.delete(selected_item)
 
     def on_tree_right_click(self, event):
+        self.right_click = True
+        self.add_before_button.config(state='disabled')
+        self.add_after_button.config(state='disabled')
         item_id = self.tree.identify_row(event.y)
         self.tree.selection_set(item_id)
         self.tree_context_menu.post(event.x_root, event.y_root)
+
+        
     
     def save_model(self, model):
         file_path = filedialog.asksaveasfilename()
@@ -318,11 +414,7 @@ class ModelFrame:
             except Exception as e:
                 print(f"An error occurred: {e}")
 
-    def build_model(self):
-        if not self.input_layer_set:
-            tk.messagebox.showerror("Error", "No input layer selected")
-            return
-        
+    def build_model(self):       
         txt = self.app.text_loader.loaded_text
         if not txt:
             tk.messagebox.showerror("Error", "No file loaded")

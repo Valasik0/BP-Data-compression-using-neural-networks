@@ -107,7 +107,7 @@ class CompressedSizeFrame:
                         self.app.context_length_var.set(str(layer.input_shape[1]))
                         print(layer.input_shape[1])
                     elif index == total_layers - 1:
-                        layer_layout = "Output Layer"
+                        layer_layout = "Output Layer (Default)"
                         tag = "output"
                     else:
                         layer_layout = "Hidden Layer"

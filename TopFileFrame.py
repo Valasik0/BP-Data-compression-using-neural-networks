@@ -1,4 +1,4 @@
-import re
+from ToolTip import *
 from tkinter import ttk
 from TextLoader import *
 from CustomModel import *
@@ -67,15 +67,25 @@ class TopFileFrame:
                                       validate='key', 
                                       validatecommand=vcmd)
         self.context_length_entry.grid(row=1, column=1, pady=5, padx=(20, 0), sticky="w")
+        self.create_tooltip(self.context_length_entry, "Číslo v rozmezí 1-100")
 
     def is_number(self, s):
         if s == "":
             return True
         try:
-            int(s)
-            return True
+            val = int(s)
+            return 1 <= val <= 100
         except ValueError:
             return False
+    
+    def create_tooltip(self, widget, text):
+        tool_tip = ToolTip(widget)
+        def enter(event):
+            tool_tip.show_tip(text)
+        def leave(event):
+            tool_tip.hide_tip()
+        widget.bind('<Enter>', enter)
+        widget.bind('<Leave>', leave)
 
     def update_file_path_label(self):
         ta = TextAnalyzer(self.app.text_loader.loaded_text)
