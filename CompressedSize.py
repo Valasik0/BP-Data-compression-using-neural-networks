@@ -24,9 +24,13 @@ class CompressedSize(TextAnalyzer):
             tk.messagebox.showerror("Error", "Model error")
             return None
         
+        
         model_input_context = self.model.layers[0].input_shape[1]
         model_input_sigma = self.model.layers[0].input_shape[2]
+        print(model_input_context)
+        print(model_input_sigma)
 
+        
         if model_input_context != self.k:
             tk.messagebox.showerror("Error", f"Model input shape ({model_input_context}) doesn't match selected context length ({self.k})")
             return None
@@ -34,7 +38,7 @@ class CompressedSize(TextAnalyzer):
         if model_input_sigma != self.sigma:
             tk.messagebox.showerror("Error", f"Model input alphabet ({model_input_sigma}) doesn't match text alphabet ({self.sigma})")
             return None
-
+        
         batch_sequences = []
         batch_chars = []
         n = len(text)

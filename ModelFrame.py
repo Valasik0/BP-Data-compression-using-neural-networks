@@ -32,6 +32,7 @@ class ModelFrame:
         self.add_before_button = None
         self.add_after_button = None
         self.edit_layer_button = None  
+        self.cancel_edit_button = None
         self.right_click = False
         self.run_settings_frame = None
         self.batch_size_label = None
@@ -325,30 +326,33 @@ class ModelFrame:
         self.model_frame.rowconfigure(2, weight=1)
 
 
-    def edit_layer(self, selected_item):
-        items = self.tree.get_children()
+    def edit_layer(self,):
+        selected_item = self.tree.selection()
         if selected_item:
-            if "output" in self.tree.item(selected_item, "tags"):
+            if "output" in self.tree.item(selected_item[0], "tags"):
                 messagebox.showerror("Invalid operation", "Cannot edit the output layer.")
                 return
-            if self.tree.item(selected_item, "values")[1] == "Flatten":
+            if self.tree.item(selected_item[0], "values")[1] == "Flatten" and "input" not in self.tree.item(selected_item[0], "tags"):
                 messagebox.showerror("Invalid operation", "Cannot edit the Flatten layer.")
                 return
             
             self.activation_combobox.config(state='readonly')
             self.neurons_entry.config(state='normal')
             self.layer_type_combobox.config(state='readonly')
-            self.activation_combobox.set(self.tree.item(selected_item, "values")[3])
+            self.activation_combobox.set(self.tree.item(selected_item[0], "values")[3])
             self.neurons_entry.delete(0, 'end')
-            self.neurons_entry.insert(0, self.tree.item(selected_item, "values")[2])
-            self.layer_type_combobox.set(self.tree.item(selected_item, "values")[1])
+            self.neurons_entry.insert(0, self.tree.item(selected_item[0], "values")[2])
+            self.layer_type_combobox.set(self.tree.item(selected_item[0], "values")[1])
 
             self.add_before_button.grid_remove()
             self.add_after_button.grid_remove()
 
-            self.edit_layer_button = ttk.Button(self.layer_settings_frame, text="Confirm edit", command=lambda: self.confirm_edit(selected_item))
+            self.edit_layer_button = ttk.Button(self.layer_settings_frame, text="Confirm edit", command=lambda: self.confirm_edit(selected_item[0]))
             self.edit_layer_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
-                
+
+            self.cancel_edit_button = ttk.Button(self.layer_settings_frame, text="Cancel", command=self.cancel_edit)
+            self.cancel_edit_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+
     def confirm_edit(self, selected_item):
         layer_type = self.layer_type_combobox.get()
         if not self.validate_layer(layer_type, selected_item):
@@ -373,8 +377,18 @@ class ModelFrame:
             self.tree.item(selected_item, values=("Hidden Layer", layer_type, self.neurons_entry.get(), self.activation_combobox.get()))
         self.neurons_entry.delete(0, 'end')
         self.edit_layer_button.grid_remove()
+        self.cancel_edit_button.grid_remove()
         self.add_before_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
         self.add_after_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.add_after_button.config(state='disabled')
+        self.add_before_button.config(state='disabled')
+
+    def cancel_edit(self):
+        self.neurons_entry.delete(0, 'end')
+        self.add_before_button.grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.add_after_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=6)
+        self.edit_layer_button.grid_remove()
+        self.cancel_edit_button.grid_remove()
         self.add_after_button.config(state='disabled')
         self.add_before_button.config(state='disabled')
 
@@ -390,7 +404,7 @@ class ModelFrame:
     def create_tree_context_menu(self):
         self.tree_context_menu = tk.Menu(self.tree, tearoff=0)
         self.tree_context_menu.add_command(label="Delete", command=self.remove_layer)
-        self.tree_context_menu.add_command(label="Edit", command=lambda: self.edit_layer(self.tree.selection()[0]))
+        self.tree_context_menu.add_command(label="Edit", command=self.edit_layer)
 
     def delete_selected_tree_item(self):
         selected_item = self.tree.selection()[0] 

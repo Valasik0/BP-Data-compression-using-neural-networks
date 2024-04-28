@@ -105,7 +105,7 @@ class CompressedSizeFrame:
                         layer_layout = "Input Layer"
                         tag = "input"
                         self.app.context_length_var.set(str(layer.input_shape[1]))
-                        print(layer.input_shape[1])
+
                     elif index == total_layers - 1:
                         layer_layout = "Output Layer (Default)"
                         tag = "output"
@@ -115,7 +115,7 @@ class CompressedSizeFrame:
 
                     
                     self.app.model_frame.tree.insert('', 'end', values=(layer_layout, layer_type, neurons, activation), tags=(tag,))
-                    self.app.model_frame.input_layer_set = True
+   
 
             except (OSError, ValueError) as e:
                 tk.messagebox.showerror("Error", f"Error loading model: {e}")
@@ -138,7 +138,7 @@ class CompressedSizeFrame:
 
 
         batch_size = int(self.batch_compress_size_var.get())
-        compressed_size_calculator = CompressedSize(model, int(k), batch_size, text, self.text_widget_compress)
+        compressed_size_calculator = CompressedSize(model, int(self.app.context_length_var.get()), batch_size, text, self.text_widget_compress)
         
         cancel_button = tk.Button(self.progress_window_compress, text="Cancel",command= lambda:compressed_size_calculator.cancel_computation(self.progress_window_compress))
         cancel_button.grid(row=1, column=0, padx=5, pady=5, sticky="w")
